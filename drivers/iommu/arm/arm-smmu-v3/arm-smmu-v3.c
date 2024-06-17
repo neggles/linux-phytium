@@ -4002,8 +4002,8 @@ static void arm_smmu_driver_unregister(struct platform_driver *drv)
 
 #ifdef CONFIG_PM_SLEEP
 static const struct dev_pm_ops arm_smmu_pm_ops = {
-	.suspend = arm_smmu_suspend,
-	.resume = arm_smmu_resume,
+	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(arm_smmu_suspend,
+				      arm_smmu_resume)
 };
 #define ARM_SMMU_PM_OPS                (&arm_smmu_pm_ops)
 #else
