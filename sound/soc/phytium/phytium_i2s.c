@@ -723,21 +723,10 @@ int snd_i2s_stream_setup(struct i2s_stream *azx_dev, int pcie, u32 paddr)
 	else
 		runtime = NULL;
 
-	i2s_write_reg(azx_dev->sd_addr, DMA_CHAL_CONFG0, 0x8180);
+	i2s_write_reg(azx_dev->sd_addr, DMA_CHAL_CONFG0, 0x8081);
 	i2s_write_reg(azx_dev->sd_addr, DMA_MASK_INT, 0x80000003);
 
 	if (azx_dev->direction == SNDRV_PCM_STREAM_PLAYBACK) {
-		i2s_write_reg(azx_dev->sd_addr, DMA_BDLPL(0), (u32)azx_dev->bdl.addr);
-		i2s_write_reg(azx_dev->sd_addr, DMA_BDLPU(0), upper_32_bits(azx_dev->bdl.addr));
-		if (pcie)
-			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DEV_ADDR(0), 0x1c0);
-		else
-			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DEV_ADDR(0), paddr + 0x1c0);
-		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CBL(0), azx_dev->bufsize);
-		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_LVI(0), azx_dev->frags - 1);
-		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DSIZE(0), azx_dev->format_val << 2);
-		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DLENTH(0), 0x0);
-	} else {
 		i2s_write_reg(azx_dev->sd_addr, DMA_BDLPL(1), (u32)azx_dev->bdl.addr);
 		i2s_write_reg(azx_dev->sd_addr, DMA_BDLPU(1), upper_32_bits(azx_dev->bdl.addr));
 		if (pcie)
@@ -748,6 +737,17 @@ int snd_i2s_stream_setup(struct i2s_stream *azx_dev, int pcie, u32 paddr)
 		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_LVI(1), azx_dev->frags - 1);
 		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DSIZE(1), azx_dev->format_val);
 		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DLENTH(1), 0x0);
+	} else {
+		i2s_write_reg(azx_dev->sd_addr, DMA_BDLPL(0), (u32)azx_dev->bdl.addr);
+		i2s_write_reg(azx_dev->sd_addr, DMA_BDLPU(0), upper_32_bits(azx_dev->bdl.addr));
+		if (pcie)
+			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DEV_ADDR(0), 0x1c0);
+		else
+			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DEV_ADDR(0), paddr + 0x1c0);
+		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CBL(0), azx_dev->bufsize);
+		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_LVI(0), azx_dev->frags - 1);
+		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DSIZE(0), azx_dev->format_val << 2);
+		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DLENTH(0), 0x0);
 	}
 
 	if (runtime && runtime->period_size > 64)
