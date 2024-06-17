@@ -548,6 +548,25 @@ static int phytium_pcm_hw_params(struct snd_soc_component *component,
 	azx_dev->core.period_bytes = 0;
 	azx_dev->core.format_val = 0;
 
+	switch (params_format(hw_params)) {
+	case SNDRV_PCM_FORMAT_S16_LE:
+		azx_dev->core.format_val = 2;
+		break;
+
+	case SNDRV_PCM_FORMAT_S24_LE:
+		azx_dev->core.format_val = 0;
+		break;
+
+	case SNDRV_PCM_FORMAT_S32_LE:
+		azx_dev->core.format_val = 0;
+		break;
+
+	default:
+		dev_err(dev->dev, "phytium-i2s: unsupported PCM fmt");
+		return -EINVAL;
+	}
+
+
 	ret = chip->ops->substream_alloc_pages(chip, substream,
 					       params_buffer_bytes(hw_params));
 
@@ -683,11 +702,9 @@ int snd_i2s_stream_set_params(struct i2s_stream *azx_dev,
 	period_bytes = snd_pcm_lib_period_bytes(substream);
 	if (bufsize != azx_dev->bufsize ||
 	    period_bytes != azx_dev->period_bytes ||
-	    format_val != azx_dev->format_val ||
 	    runtime->no_period_wakeup != azx_dev->no_period_wakeup) {
 		azx_dev->bufsize = bufsize;
 		azx_dev->period_bytes = period_bytes;
-		azx_dev->format_val = format_val;
 		azx_dev->no_period_wakeup = runtime->no_period_wakeup;
 		err = snd_i2s_stream_setup_periods(azx_dev);
 		if (err < 0)
@@ -713,23 +730,23 @@ int snd_i2s_stream_setup(struct i2s_stream *azx_dev, int pcie, u32 paddr)
 		i2s_write_reg(azx_dev->sd_addr, DMA_BDLPL(0), (u32)azx_dev->bdl.addr);
 		i2s_write_reg(azx_dev->sd_addr, DMA_BDLPU(0), upper_32_bits(azx_dev->bdl.addr));
 		if (pcie)
-			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DEV_ADDR(0), 0x1c8);
+			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DEV_ADDR(0), 0x1c0);
 		else
-			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DEV_ADDR(0), paddr + 0x1c8);
+			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DEV_ADDR(0), paddr + 0x1c0);
 		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CBL(0), azx_dev->bufsize);
 		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_LVI(0), azx_dev->frags - 1);
-		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DSIZE(0), 0x2);//0x2
-		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DLENTH(0), 0x0);//0x0
+		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DSIZE(0), azx_dev->format_val << 2);
+		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DLENTH(0), 0x0);
 	} else {
 		i2s_write_reg(azx_dev->sd_addr, DMA_BDLPL(1), (u32)azx_dev->bdl.addr);
 		i2s_write_reg(azx_dev->sd_addr, DMA_BDLPU(1), upper_32_bits(azx_dev->bdl.addr));
 		if (pcie)
-			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DEV_ADDR(1), 0x1c0);
+			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DEV_ADDR(1), 0x1c8);
 		else
-			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DEV_ADDR(1), paddr + 0x1c0);
+			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DEV_ADDR(1), paddr + 0x1c8);
 		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CBL(1), azx_dev->bufsize);
 		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_LVI(1), azx_dev->frags - 1);
-		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DSIZE(1), 0x8);//0x8
+		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DSIZE(1), azx_dev->format_val);
 		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_DLENTH(1), 0x0);
 	}
 
@@ -786,9 +803,9 @@ static int phytium_pcm_prepare(struct snd_soc_component *component,
 void snd_i2s_stream_clear(struct i2s_stream *azx_dev)
 {
 	if (azx_dev->direction == SNDRV_PCM_STREAM_PLAYBACK)
-		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0), 0x0);
-	else
 		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(1), 0x0);
+	else
+		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0), 0x0);
 
 	azx_dev->running = false;
 }
@@ -801,9 +818,9 @@ void snd_i2s_stream_stop(struct i2s_stream *azx_dev)
 void snd_i2s_stream_start(struct i2s_stream *azx_dev, bool fresh_start)
 {
 	if (azx_dev->direction == SNDRV_PCM_STREAM_PLAYBACK)
-		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0), 0x1);
+		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(1), 0x1);
 	else
-		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(1), 0x5);
+		i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0), 0x5);
 
 	azx_dev->running = true;
 }
@@ -873,19 +890,6 @@ void snd_i2s_stream_cleanup(struct i2s_stream *azx_dev)
 	if (azx_dev->sd_addr) {
 		if (azx_dev->direction == SNDRV_PCM_STREAM_PLAYBACK) {
 			mask = i2s_read_reg(azx_dev->sd_addr, DMA_MASK_INT);
-			mask &= ~BIT(0);
-			i2s_write_reg(azx_dev->sd_addr, DMA_MASK_INT, mask);
-			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0), 0);
-			while (cnt--) {
-				if (i2s_read_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0)) == 0)
-					break;
-			}
-			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0), 2);
-			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0), 0);
-			i2s_write_reg(azx_dev->sd_addr, DMA_BDLPL(0), 0);
-			i2s_write_reg(azx_dev->sd_addr, DMA_BDLPU(0), 0);
-		} else {
-			mask = i2s_read_reg(azx_dev->sd_addr, DMA_MASK_INT);
 			mask &= ~BIT(1);
 			i2s_write_reg(azx_dev->sd_addr, DMA_MASK_INT, mask);
 			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(1), 0);
@@ -897,6 +901,21 @@ void snd_i2s_stream_cleanup(struct i2s_stream *azx_dev)
 			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(1), 0);
 			i2s_write_reg(azx_dev->sd_addr, DMA_BDLPL(1), 0);
 			i2s_write_reg(azx_dev->sd_addr, DMA_BDLPU(1), 0);
+			i2s_write_reg(azx_dev->sd_addr, DMA_STS, azx_dev->sd_int_sta_mask);
+		} else {
+			mask = i2s_read_reg(azx_dev->sd_addr, DMA_MASK_INT);
+			mask &= ~BIT(0);
+			i2s_write_reg(azx_dev->sd_addr, DMA_MASK_INT, mask);
+			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0), 0);
+			while (cnt--) {
+				if (i2s_read_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0)) == 0)
+					break;
+			}
+			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0), 2);
+			i2s_write_reg(azx_dev->sd_addr, DMA_CHALX_CTL(0), 0);
+			i2s_write_reg(azx_dev->sd_addr, DMA_BDLPL(0), 0);
+			i2s_write_reg(azx_dev->sd_addr, DMA_BDLPU(0), 0);
+			i2s_write_reg(azx_dev->sd_addr, DMA_STS, azx_dev->sd_int_sta_mask);
 		}
 	}
 }
@@ -926,9 +945,12 @@ static snd_pcm_uframes_t phytium_pcm_pointer(struct snd_soc_component *component
 {
 	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
 	struct i2s_phytium *dev = snd_soc_dai_get_drvdata(asoc_rtd_to_cpu(rtd, 0));
-	int stream = substream->stream;
+	u32 pos = 0;
 
-	u32 pos = i2s_read_reg(dev->regs_db, DMA_LPIB(stream));
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		pos = i2s_read_reg(dev->regs_db, DMA_LPIB(1));
+	else
+		pos = i2s_read_reg(dev->regs_db, DMA_LPIB(0));
 
 	return bytes_to_frames(substream->runtime, pos);
 }
@@ -1090,9 +1112,9 @@ void snd_i2s_stream_init(struct i2sc_bus *bus, struct i2s_stream *azx_dev,
 	azx_dev->sd_addr = bus->remap_addr;
 
 	if (idx == 0)
-		azx_dev->sd_int_sta_mask = 1 << idx;
-	else
 		azx_dev->sd_int_sta_mask = 1 << 8;
+	else
+		azx_dev->sd_int_sta_mask = 1;
 
 	azx_dev->index = idx;
 	azx_dev->direction = direction;
