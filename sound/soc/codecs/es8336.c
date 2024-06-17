@@ -880,7 +880,7 @@ static void hp_work(struct work_struct *work)
 	if (es8336->hp_det_invert)
 		enable = !enable;
 
-	es8336->hp_inserted = enable ? true : false;
+	es8336->hp_inserted = !enable;
 	if (!es8336->muted) {
 		if (es8336->hp_inserted)
 			es8336_enable_spk(es8336, false);
@@ -964,6 +964,7 @@ static int es8336_i2c_probe(struct i2c_client *i2c)
 	struct gpio_desc *gpiod;
 	int ret = -1;
 	int hp_irq;
+	int active_level = 0;
 
 	es8336 = devm_kzalloc(&i2c->dev, sizeof(*es8336), GFP_KERNEL);
 	if (!es8336)
@@ -986,13 +987,13 @@ static int es8336_i2c_probe(struct i2c_client *i2c)
 
 	gpiod = devm_gpiod_get_index_optional(&i2c->dev, "sel", 0,
 							GPIOD_OUT_HIGH);
-
+	device_property_read_u32(&i2c->dev, "spk-active-level", &active_level);
 	if (!gpiod) {
 		dev_info(&i2c->dev, "Can not get spk_ctl_gpio\n");
 		es8336->spk_ctl_gpio = INVALID_GPIO;
 	} else {
 		es8336->spk_ctl_gpio = desc_to_gpio(gpiod);
-		es8336->spk_active_level = 0;
+		es8336->spk_active_level = active_level;
 		es8336_enable_spk(es8336, false);
 	}
 
