@@ -569,7 +569,7 @@ static void macb_set_tx_clk(struct macb *bp, int speed)
 		netdev_err(bp->dev, "adjusting tx_clk failed.\n");
 }
 
-static int phytium_gem_sel_clk(struct macb *bp, int spd)
+static void phytium_gem_sel_clk(struct macb *bp, int spd)
 {
 	int speed = 0;
 
@@ -695,8 +695,26 @@ static int phytium_gem_sel_clk(struct macb *bp, int spd)
 
 	gem_writel(bp, HS_MAC_CONFIG, GEM_BFINS(HS_MAC_SPEED, speed,
 						gem_readl(bp, HS_MAC_CONFIG)));
+}
 
-	return 0;
+static void phytium_gem2p0_sel_clk(struct macb *bp, int spd)
+{
+	if (bp->phy_interface == PHY_INTERFACE_MODE_SGMII) {
+		if (spd == SPEED_100 || spd == SPEED_10) {
+			gem_writel(bp, SRC_SEL_LN, 0x1);
+			gem_writel(bp, DIV_SEL1_LN, 0x1);
+		}
+	}
+
+	if (spd == SPEED_100 || spd == SPEED_10)
+		gem_writel(bp, HS_MAC_CONFIG, GEM_BFINS(HS_MAC_SPEED, HS_SPEED_100M,
+							gem_readl(bp, HS_MAC_CONFIG)));
+	else if (spd == SPEED_1000)
+		gem_writel(bp, HS_MAC_CONFIG, GEM_BFINS(HS_MAC_SPEED, HS_SPEED_1000M,
+							gem_readl(bp, HS_MAC_CONFIG)));
+	else if (spd == SPEED_2500)
+		gem_writel(bp, HS_MAC_CONFIG, GEM_BFINS(HS_MAC_SPEED, HS_SPEED_2500M,
+							gem_readl(bp, HS_MAC_CONFIG)));
 }
 
 static void macb_usx_pcs_link_up(struct phylink_pcs *pcs, unsigned int neg_mode,
@@ -894,7 +912,7 @@ static void macb_mac_link_up(struct phylink_config *config,
 	spin_lock_irqsave(&bp->lock, flags);
 
 	if (bp->caps & MACB_CAPS_SEL_CLK_HW)
-		phytium_gem_sel_clk(bp, speed);
+		bp->sel_clk_hw(bp, speed);
 
 	ctrl = macb_or_gem_readl(bp, NCFGR);
 
@@ -5197,6 +5215,19 @@ static const struct macb_config phytium_config = {
 	.clk_init = phytium_clk_init,
 	.init = macb_init,
 	.jumbo_max_len = 10240,
+	.sel_clk_hw = phytium_gem_sel_clk,
+	.usrio = &macb_default_usrio,
+};
+
+static const struct macb_config phytium_gem2p0_config = {
+	.caps = MACB_CAPS_GIGABIT_MODE_AVAILABLE | MACB_CAPS_JUMBO |
+		MACB_CAPS_GEM_HAS_PTP | MACB_CAPS_BD_RD_PREFETCH |
+		MACB_CAPS_SEL_CLK_HW,
+	.dma_burst_length = 16,
+	.clk_init = phytium_clk_init,
+	.init = macb_init,
+	.jumbo_max_len = 10240,
+	.sel_clk_hw = phytium_gem2p0_sel_clk,
 	.usrio = &macb_default_usrio,
 };
 
@@ -5224,6 +5255,7 @@ static const struct of_device_id macb_dt_ids[] = {
 	{ .compatible = "xlnx,zynq-gem", .data = &zynq_config },
 	{ .compatible = "xlnx,versal-gem", .data = &versal_config},
 	{ .compatible = "cdns,phytium-gem", .data = &phytium_config },
+	{ .compatible = "cdns,phytium-gem-2.0", .data = &phytium_gem2p0_config },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, macb_dt_ids);
@@ -5378,8 +5410,10 @@ static int macb_probe(struct platform_device *pdev)
 	bp->tx_clk = tx_clk;
 	bp->rx_clk = rx_clk;
 	bp->tsu_clk = tsu_clk;
-	if (macb_config)
+	if (macb_config) {
 		bp->jumbo_max_len = macb_config->jumbo_max_len;
+		bp->sel_clk_hw = macb_config->sel_clk_hw;
+	}
 
 	if (!hw_is_gem(bp->regs, bp->native_io))
 		bp->max_tx_length = MACB_MAX_TX_LEN;
