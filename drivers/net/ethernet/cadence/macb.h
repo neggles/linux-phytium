@@ -1224,6 +1224,7 @@ struct macb_config {
 	unsigned int		max_tx_length;
 	int	jumbo_max_len;
 	const struct macb_usrio_config *usrio;
+	void (*sel_clk_hw)(struct macb *bp, int speed);
 };
 
 struct tsu_incr {
@@ -1363,6 +1364,8 @@ struct macb {
 
 	struct macb_pm_data pm_data;
 	const struct macb_usrio_config *usrio;
+
+	void (*sel_clk_hw)(struct macb *bp, int speed);
 };
 
 #ifdef CONFIG_MACB_USE_HWSTAMP
