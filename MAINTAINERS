@@ -2539,6 +2539,7 @@ F:	arch/arm64/boot/dts/phytium/*
 F:	drivers/gpio/gpio-phytium*
 F:	drivers/mmc/host/phytium-sdci.*
 F:	drivers/mtd/parsers/acpipart_core.c
+F:	drivers/net/can/phytium/*
 F:	drivers/spi/spi-phytium*
 F:	drivers/spi/spi-phytium-qspi.c
 
