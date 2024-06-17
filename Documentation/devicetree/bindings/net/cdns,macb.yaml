@@ -48,7 +48,8 @@ properties:
 
       - items:
           - enum:
-              - cdns,phytium-gem     # Phytium SoC
+              - cdns,phytium-gem      # Phytium SoC
+              - cdns,phytium-gem-2.0  # Phytium SoC 2.0
           - const: cdns,gmac          # Generic
 
       - enum:
