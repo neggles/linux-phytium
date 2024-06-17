@@ -2790,7 +2790,7 @@ static int macb_alloc_consistent(struct macb *bp)
 		size = TX_RING_BYTES(bp) + bp->tx_bd_rd_prefetch;
 		queue->tx_ring = dma_alloc_coherent(&bp->pdev->dev, size,
 						    &queue->tx_ring_dma,
-						    GFP_KERNEL);
+						    GFP_KERNEL | GFP_DMA32);
 		if (!queue->tx_ring)
 			goto out_err;
 		netdev_dbg(bp->dev,
@@ -2799,13 +2799,13 @@ static int macb_alloc_consistent(struct macb *bp)
 			   queue->tx_ring);
 
 		size = bp->tx_ring_size * sizeof(struct macb_tx_skb);
-		queue->tx_skb = kmalloc(size, GFP_KERNEL);
+		queue->tx_skb = kzalloc(size, GFP_KERNEL);
 		if (!queue->tx_skb)
 			goto out_err;
 
 		size = RX_RING_BYTES(bp) + bp->rx_bd_rd_prefetch;
 		queue->rx_ring = dma_alloc_coherent(&bp->pdev->dev, size,
-						 &queue->rx_ring_dma, GFP_KERNEL);
+						 &queue->rx_ring_dma, GFP_KERNEL | GFP_DMA32);
 		if (!queue->rx_ring)
 			goto out_err;
 		netdev_dbg(bp->dev,
