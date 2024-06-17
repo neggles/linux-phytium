@@ -832,11 +832,13 @@ static void macb_mac_config(struct phylink_config *config, unsigned int mode,
 			ctrl |= MACB_BIT(RM9200_RMII);
 	} else if (macb_is_gem(bp)) {
 		ctrl &= ~(GEM_BIT(SGMIIEN) | GEM_BIT(PCSSEL));
-		ncr &= ~GEM_BIT(ENABLE_HS_MAC);
+		ncr &= ~(GEM_BIT(ENABLE_HS_MAC) | MACB_BIT(2PT5G));
 
-		if (state->interface == PHY_INTERFACE_MODE_SGMII ||
-		    state->interface == PHY_INTERFACE_MODE_2500BASEX) {
+		if (state->interface == PHY_INTERFACE_MODE_SGMII) {
 			ctrl |= GEM_BIT(SGMIIEN) | GEM_BIT(PCSSEL);
+		} else if (state->interface == PHY_INTERFACE_MODE_2500BASEX) {
+			ctrl |= GEM_BIT(SGMIIEN) | GEM_BIT(PCSSEL);
+			ncr |= MACB_BIT(2PT5G);
 		} else if (state->interface == PHY_INTERFACE_MODE_10GBASER ||
 			   state->interface == PHY_INTERFACE_MODE_USXGMII ||
 			   state->interface == PHY_INTERFACE_MODE_5GBASER) {
@@ -1081,7 +1083,8 @@ static int macb_mii_probe(struct net_device *dev)
 	bp->phylink_config.type = PHYLINK_NETDEV;
 	bp->phylink_config.mac_managed_pm = true;
 
-	if (bp->phy_interface == PHY_INTERFACE_MODE_SGMII) {
+	if (bp->phy_interface == PHY_INTERFACE_MODE_SGMII ||
+	    bp->phy_interface == PHY_INTERFACE_MODE_2500BASEX) {
 		bp->phylink_config.poll_fixed_state = true;
 		bp->phylink_config.get_fixed_state = macb_get_pcs_fixed_state;
 	} else if (bp->phy_interface == PHY_INTERFACE_MODE_2500BASEX ||
@@ -1119,12 +1122,6 @@ static int macb_mii_probe(struct net_device *dev)
 				  bp->phylink_config.supported_interfaces);
 			bp->phylink_config.mac_capabilities |= MAC_10000FD;
 		}
-	}
-
-	if (bp->phy_interface == PHY_INTERFACE_MODE_SGMII ||
-	    bp->phy_interface == PHY_INTERFACE_MODE_2500BASEX) {
-		bp->phylink_config.poll_fixed_state = true;
-		bp->phylink_config.get_fixed_state = macb_get_pcs_fixed_state;
 	}
 
 	bp->phylink = phylink_create(&bp->phylink_config, bp->pdev->dev.fwnode,
@@ -3030,7 +3027,9 @@ static void macb_init_hw(struct macb *bp)
 	if (bp->caps & MACB_CAPS_JUMBO)
 		bp->rx_frm_len_mask = MACB_RX_JFRMLEN_MASK;
 
-	gem_writel(bp, AXI_PIPE, 0x1010);
+	/* MACB_CAPS_SEL_CLK_HW flag is a unique flag for Phytium GEM */
+	if (bp->caps & MACB_CAPS_SEL_CLK_HW)
+		gem_writel(bp, AXI_PIPE, 0x1010);
 
 	macb_configure_dma(bp);
 
