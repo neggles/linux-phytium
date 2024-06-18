@@ -118,7 +118,7 @@ MODULE_DEVICE_TABLE(acpi, parse_acpipart_match_table);
 
 static struct mtd_part_parser acpipart_parser = {
 	.parse_fn = parse_acpi_fixed_partitions,
-	.name = "acpi-fixed-partitions",
+	.name = "acpi-partitions",
 	.acpi_match_table = ACPI_PTR(parse_acpipart_match_table),
 };
 
