@@ -5065,10 +5065,10 @@ static int phytium_clk_init(struct platform_device *pdev, struct clk **pclk,
 	return 0;
 
 err_plat_dev_register:
-	clk_unregister(plat_data.hclk);
+	clk_unregister_fixed_rate(plat_data.hclk);
 
 err_hclk_register:
-	clk_unregister(plat_data.pclk);
+	clk_unregister_fixed_rate(plat_data.pclk);
 
 err_pclk_register:
 	return err;
@@ -5590,6 +5590,7 @@ static int macb_remove(struct platform_device *pdev)
 {
 	struct net_device *dev;
 	struct macb *bp;
+	struct macb_platform_data *pdata;
 
 	dev = platform_get_drvdata(pdev);
 
@@ -5608,6 +5609,11 @@ static int macb_remove(struct platform_device *pdev)
 			macb_clks_disable(bp->pclk, bp->hclk, bp->tx_clk,
 					  bp->rx_clk, bp->tsu_clk);
 			pm_runtime_set_suspended(&pdev->dev);
+		}
+		pdata = dev_get_platdata(&pdev->dev);
+		if (pdata) {
+			clk_unregister_fixed_rate(pdata->hclk);
+			clk_unregister_fixed_rate(pdata->pclk);
 		}
 		phylink_destroy(bp->phylink);
 		free_netdev(dev);
