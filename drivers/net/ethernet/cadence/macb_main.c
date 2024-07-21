@@ -5029,33 +5029,48 @@ err_out_phy_exit:
 #define PHYTIUM_PCLK_RATE 250000000
 #define PHYTIUM_HCLK_RATE 48000000
 
+static int clk_cnt;
+
 static int phytium_clk_init(struct platform_device *pdev, struct clk **pclk,
 			    struct clk **hclk, struct clk **tx_clk,
 			    struct clk **rx_clk, struct clk **tsu_clk)
 {
-	struct macb_platform_data plat_data;
+	struct macb_platform_data *pdata;
 	int err = 0;
 
 	if (has_acpi_companion(&pdev->dev)) {
+		char *pclk_name, *hclk_name;
+
 		/* set up macb platform data */
-		memset(&plat_data, 0, sizeof(plat_data));
+		pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
+		if (!pdata)
+			return -ENOMEM;
+		memset(pdata, 0, sizeof(*pdata));
 
 		/* initialize clocks */
-		plat_data.pclk = clk_register_fixed_rate(&pdev->dev, "pclk", NULL, 0,
-							 PHYTIUM_PCLK_RATE);
-		if (IS_ERR(plat_data.pclk)) {
-			err = PTR_ERR(plat_data.pclk);
+		pclk_name = kzalloc(8, GFP_KERNEL);
+		if (!pclk_name)
+			goto err_pclk_register;
+		snprintf(pclk_name, 8, "pclk-%d", clk_cnt);
+		pdata->pclk = clk_register_fixed_rate(&pdev->dev, pclk_name, NULL, 0,
+						      PHYTIUM_PCLK_RATE);
+		if (IS_ERR(pdata->pclk)) {
+			err = PTR_ERR(pdata->pclk);
 			goto err_pclk_register;
 		}
 
-		plat_data.hclk = clk_register_fixed_rate(&pdev->dev, "hclk", NULL, 0,
-							 PHYTIUM_HCLK_RATE);
-		if (IS_ERR(plat_data.hclk)) {
-			err = PTR_ERR(plat_data.hclk);
+		hclk_name = kzalloc(8, GFP_KERNEL);
+		if (!hclk_name)
+			goto err_hclk_register;
+		snprintf(hclk_name, 8, "hclk-%d", clk_cnt++);
+		pdata->hclk = clk_register_fixed_rate(&pdev->dev, hclk_name, NULL, 0,
+						      PHYTIUM_HCLK_RATE);
+		if (IS_ERR(pdata->hclk)) {
+			err = PTR_ERR(pdata->hclk);
 			goto err_hclk_register;
 		}
 
-		err = platform_device_add_data(pdev, &plat_data, sizeof(plat_data));
+		err = platform_device_add_data(pdev, pdata, sizeof(*pdata));
 		if (err)
 			goto err_plat_dev_register;
 	}
@@ -5065,10 +5080,10 @@ static int phytium_clk_init(struct platform_device *pdev, struct clk **pclk,
 	return 0;
 
 err_plat_dev_register:
-	clk_unregister_fixed_rate(plat_data.hclk);
+	clk_unregister_fixed_rate(pdata->hclk);
 
 err_hclk_register:
-	clk_unregister_fixed_rate(plat_data.pclk);
+	clk_unregister_fixed_rate(pdata->pclk);
 
 err_pclk_register:
 	return err;
