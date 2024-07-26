@@ -1542,6 +1542,17 @@ config ARM64_BOOTPARAM_HOTPLUG_CPU0
 	  You still can set arm64_cpu0_hotpluggable on at boot by kernel
 	  parameter arm64_cpu0_hotplug.
 
+config ARM64_ERR_RECOV
+	bool "Support arm64 RAS error recovery"
+	depends on ACPI_APEI_SEA && MEMORY_FAILURE
+	help
+	  With ARM v8.2 RAS Extension, SEA are usually triggered when memory errors
+	  are consumed. In some cases, if the error address is in a clean page or a
+	  read-only page, there is a chance to recover. Such as error occurs in a
+	  instruction page, we can reread this page from disk instead of killing process.
+
+	  Say Y if unsure.
+
 # Common NUMA Features
 config NUMA
 	bool "NUMA Memory Allocation and Scheduler Support"
