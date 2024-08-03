@@ -1965,7 +1965,8 @@ static void its_irq_compose_msi_msg(struct irq_data *d, struct msi_msg *msg)
 		return;
 #endif
 
-	iommu_dma_compose_msi_msg(irq_data_get_msi_desc(d), msg);
+	if ((read_cpuid_id() & MIDR_CPU_MODEL_MASK) != MIDR_PHYTIUM_PS17064)
+		iommu_dma_compose_msi_msg(irq_data_get_msi_desc(d), msg);
 }
 
 static int its_irq_set_irqchip_state(struct irq_data *d,
@@ -5231,6 +5232,7 @@ static void its_restore_enable(void)
 {
 	struct its_node *its;
 	int ret;
+	int cpu;
 
 	raw_spin_lock(&its_lock);
 	list_for_each_entry(its, &its_nodes, entry) {
@@ -5283,6 +5285,23 @@ static void its_restore_enable(void)
 		if (its->collections[smp_processor_id()].col_id <
 		    GITS_TYPER_HCC(gic_read_typer(base + GITS_TYPER)))
 			its_cpu_init_collection(its);
+	}
+
+	/*
+	 * Enable LPIs:firmware just restore GICR_CTLR_ENABLE_LPIs of boot
+	 * CPU, the other CPUs also should be restored.
+	 */
+	for_each_possible_cpu(cpu) {
+		void __iomem *rbase = gic_data_rdist_cpu(cpu)->rd_base;
+		u32 val;
+
+		/* Enable LPIs */
+		val = readl_relaxed(rbase + GICR_CTLR);
+		if (val & GICR_CTLR_ENABLE_LPIS)
+			continue;
+
+		val |= GICR_CTLR_ENABLE_LPIS;
+		writel_relaxed(val, rbase + GICR_CTLR);
 	}
 	raw_spin_unlock(&its_lock);
 }
