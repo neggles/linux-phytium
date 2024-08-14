@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /* Phytium display drm driver
  *
- * Copyright (C) 2021-2023, Phytium Technology Co., Ltd.
+ * Copyright (c) 2021-2024 Phytium Technology Co., Ltd.
  */
 
 #ifndef __PHYTIUM_DP_H__
@@ -113,6 +113,7 @@ struct phytium_dp_device {
 
 	struct phytium_panel panel;
 	struct drm_display_mode native_mode;
+	struct pwm_device *pwm;
 };
 
 union phytium_phy_tp {

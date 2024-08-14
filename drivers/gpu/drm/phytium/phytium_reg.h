@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /* Phytium display drm driver
  *
- * Copyright (C) 2021-2023, Phytium Technology Co., Ltd.
+ * Copyright (c) 2021-2024 Phytium Technology Co., Ltd.
  */
 
 #ifndef __PHYTIUM_REG_H__
@@ -53,7 +53,8 @@
 	#define VSYNC_END_MASK					0x7fff
 	#define VSYNC_PULSE_ENABLED				(1<<30)
 	#define VSYNC_NEGATIVE					(1<<31)
-#define	PHYTIUM_DC_DISPLAY_CURRENT_LOCATION		0x1450
+#define	PHYTIUM_DC_LOCATION				0x1450
+	#define LOVATION_Y_SHIFT				16
 #define	PHYTIUM_DC_GAMMA_INDEX				0x1458
 	#define GAMMA_INDEX_MAX					256
 #define	PHYTIUM_DC_GAMMA_DATA				0x1460
@@ -267,7 +268,7 @@
 #define PHYTIUM_DP_INTERRUPT_MASK			0x0144
 	#define HPD_IRQ_MASK					(1<<1)
 	#define HPD_EVENT_MASK					(1<<0)
-	#define HPD_OTHER_MASK					0x3c
+	#define HPD_OTHER_MASK					0x7c
 #define PHYTIUM_DP_AUX_REPLY_DATA_COUNT			0x0148
 #define PHYTIUM_DP_AUX_STATUS				0x014C
 	#define REPLY_RECEIVED					0x1

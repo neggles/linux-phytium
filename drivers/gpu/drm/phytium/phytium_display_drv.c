@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /* Phytium display drm driver
  *
- * Copyright (C) 2021-2023, Phytium Technology Co., Ltd.
+ * Copyright (c) 2021-2024 Phytium Technology Co., Ltd.
  */
 
 #include <drm/drm_atomic_helper.h>
@@ -52,7 +52,7 @@ int phytium_wait_cmd_done(struct phytium_display_private *priv,
 				    uint32_t request_bit,
 				    uint32_t reply_bit)
 {
-	int timeout = 500, config = 0, ret = 0;
+	int timeout = 1000, config = 0, ret = 0;
 
 	do {
 		mdelay(1);
@@ -253,8 +253,8 @@ static int phytium_display_load(struct drm_device *dev, unsigned long flags)
 		priv->vram_hw_init(priv);
 
 	phytium_irq_preinstall(dev);
-	ret = request_irq(priv->irq, phytium_display_irq_handler,
-		       IRQF_SHARED, dev->driver->name, dev);
+	ret = request_irq(priv->irq, phytium_display_irq_handler, IRQF_SHARED,
+			  dev->driver->name, dev);
 	if (ret) {
 		DRM_ERROR("install irq failed\n");
 		goto failed_irq_install;
