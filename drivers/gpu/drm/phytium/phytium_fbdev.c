@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /* Phytium display drm driver
  *
- * Copyright (C) 2021-2023, Phytium Technology Co., Ltd.
+ * Copyright (c) 2021-2024 Phytium Technology Co., Ltd.
  */
 
 #include <drm/drm.h>
@@ -34,10 +34,10 @@ static int phytium_fbdev_mmap(struct fb_info *info, struct vm_area_struct *vma)
 
 static const struct fb_ops phytium_fbdev_ops = {
 	.owner = THIS_MODULE,
-	 DRM_FB_HELPER_DEFAULT_OPS,
 	.fb_mmap = phytium_fbdev_mmap,
-	 FB_DEFAULT_IOMEM_OPS,
 	.fb_destroy = phytium_fbdev_destroy,
+	 DRM_FB_HELPER_DEFAULT_OPS,
+	 FB_DEFAULT_IOMEM_OPS,
 };
 
 static int
